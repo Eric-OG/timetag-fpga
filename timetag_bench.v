@@ -39,10 +39,9 @@ timetag uut(
 // This just prints the results in the ModelSim text window
 // You can leave this out if you want
 initial
-	$monitor($time, "  cmd(%b %x) data(%b %x) cmd_rdy=%b cmd_ack=%b cmd_data=%x state=",
+	$monitor($time, "  cmd(%b %x) data(%b %x)",
 		cmd_wr, cmd_in,
 		data_rdy, data,
-		uut.reg_addr, uut.reg_data
 	);
 
 // Clocks
