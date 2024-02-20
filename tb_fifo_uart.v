@@ -1,6 +1,6 @@
 `timescale 1ns/1ns
 
-module tb_apdtimer_all();
+module tb_fifo_uart();
 
 reg clk;
 reg fx2_clk;
@@ -21,6 +21,12 @@ reg [3:0] detectors;
 wire [3:0] laser_en;
 wire running;
 
+// Buffer signals
+wire rec_buf_full;
+reg rec_buf_rdnext = 0;
+wire rec_buf_empty;
+wire [47:0] rec_buf_out;
+
 assign reg_data = reg_data_drive;
 
 // Instantiate the UUT
@@ -28,7 +34,7 @@ apdtimer_all uut(
 	.clk(clk),
 	.strobe_in(detectors),
 
-	.reg_clk(fx2_clk),
+	.reg_clk(clk),
 	.reg_addr(reg_addr),
 	.reg_data(reg_data),
 	.reg_wr(reg_wr),
@@ -36,6 +42,19 @@ apdtimer_all uut(
 	.record_rdy(record_rdy),
 	.record(record)
 );
+
+sample_fifo rec_buf(
+	.wrclk(clk),
+	.wrreq(record_rdy && !rec_buf_full),
+	.wrfull(rec_buf_full),
+	.data({1'b0, record}),
+
+	.rdclk(clk),
+	.rdreq(rec_buf_rdnext),
+	.rdempty(rec_buf_empty),
+	.q(rec_buf_out)
+);
+
 
 // This just prints the results in the ModelSim text window
 // You can leave this out if you want
@@ -115,7 +134,11 @@ initial begin
 
 	#12  reg_wr=0;
 
-	data_ack = 1;
+	#300 rec_buf_rdnext = 1;
+	#50 rec_buf_rdnext = 0;
+	#100
+
+	$stop;
 end
 
 endmodule
