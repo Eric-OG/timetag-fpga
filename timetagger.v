@@ -79,7 +79,7 @@ uart_tx #(.CLKS_PER_BIT(173)) UART_TX_INST
      );
 
 // UART Byte multiplexer
-always @(curr_byte_ctr) begin
+always @(curr_byte_ctr, clk) begin
   case (curr_byte_ctr)
     3'b000: curr_uart_byte = rec_buf_out[47:40];
     3'b001: curr_uart_byte = rec_buf_out[39:32];
@@ -104,7 +104,10 @@ always @(posedge clk) begin
 				if(activate)
 					state = ACTIVATE;
 			ACTIVATE:
+			begin
+				curr_byte_ctr = 3'b000; // Temporary solution, not synthethisable otherwise
 				state = WAIT_RECORD;
+			end
 			WAIT_RECORD:
 				if(activate) begin
 					if(~rec_buf_empty)
@@ -120,10 +123,13 @@ always @(posedge clk) begin
 				if(uart_done) begin
 					curr_byte_ctr = curr_byte_ctr + 1;
 					if(curr_byte_ctr == 3'b110)
+					begin
+						curr_byte_ctr = 3'b000;
 						if(activate)
 							state = WAIT_RECORD;
 						else
 							state = WAIT_FOR_ACTIVATE;
+					end
 					else
 						state = SEND_BYTE;
 				end
@@ -166,8 +172,6 @@ begin
 
 		READ_FIFO: begin
 			rec_buf_rdnext = 1;
-			// Prepare to send bytes
-			curr_byte_ctr = 0;
 		end
 
 		SEND_BYTE: begin

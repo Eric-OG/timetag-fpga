@@ -37,7 +37,7 @@ reg [DATA_WIDTH-1:0] data = 0;
 
 genvar i;
 generate
-	for (i = 0; i<N_CHANNELS; i=i+1) begin
+	for (i = 0; i<N_CHANNELS; i=i+1) begin : gen_strobes_block
 		strobe_latch latch (clk, strobe_channels[i], strobe_channels_treated[i]);
 	end
 endgenerate

@@ -50,7 +50,7 @@ initial begin
 	#100 reset = 0;
 	#100 activate = 1;
 
-	#100000 $stop;
+	#130000 $stop;
 end
 
 endmodule
