@@ -13,8 +13,8 @@ localparam
     ACTIVATE = 2,
     WAIT_RECORD = 3,
 	READ_FIFO = 4,
-    SEND_BYTE = 5,
-	WAIT_BYTE = 6;
+    SEND_WORD = 5,
+	WAIT_WORD = 6;
 
 input [3:0] strobe_channels;
 input clk;
@@ -36,10 +36,8 @@ wire rec_buf_empty;
 wire [47:0] rec_buf_out;
 
 // UART signals
+reg reset_uart;
 reg uart_send;
-reg [2:0] curr_byte_ctr;
-reg [7:0] curr_uart_byte;
-wire uart_is_active;
 wire uart_done;
 
 // Finite state machine states
@@ -69,27 +67,14 @@ sample_fifo rec_buf(
 	.q(rec_buf_out)
 );
 
-uart_tx #(.CLKS_PER_BIT(173)) UART_TX_INST
-    (.i_Clock(clk),
-     .i_Tx_DV(uart_send),
-     .i_Tx_Byte(curr_uart_byte),
-     .o_Tx_Active(uart_is_active),
-     .o_Tx_Serial(tx_out),
-     .o_Tx_Done(uart_done)
-     );
-
-// UART Byte multiplexer
-always @(curr_byte_ctr, clk) begin
-  case (curr_byte_ctr)
-    3'b000: curr_uart_byte = rec_buf_out[47:40];
-    3'b001: curr_uart_byte = rec_buf_out[39:32];
-    3'b010: curr_uart_byte = rec_buf_out[31:24];
-    3'b011: curr_uart_byte = rec_buf_out[23:16];
-    3'b100: curr_uart_byte = rec_buf_out[15:8];
-    3'b101: curr_uart_byte = rec_buf_out[7:0];
-    default: curr_uart_byte = 8'b00000000; // Default case, set output to 0 if select is out of range
-  endcase
-end
+uart_serialized #(.CLKS_PER_BIT(173), .DATA_WIDTH_BYTES(6)) uart_transmitter (
+	.clk(clk),
+    .reset(reset_uart),
+    .data_in(rec_buf_out),
+    .trigger(uart_send),
+    .tx_out(tx_out),
+    .transmission_over(uart_done)
+);
 
 // State transition logic
 always @(posedge clk) begin
@@ -104,35 +89,25 @@ always @(posedge clk) begin
 				if(activate)
 					state = ACTIVATE;
 			ACTIVATE:
-			begin
-				curr_byte_ctr = 3'b000; // Temporary solution, not synthethisable otherwise
 				state = WAIT_RECORD;
-			end
 			WAIT_RECORD:
-				if(activate) begin
-					if(~rec_buf_empty)
-						state = READ_FIFO;
-				end
-				else
+				if(activate & (~rec_buf_empty))
+					state = READ_FIFO;
+				else if (~activate)
 					state = WAIT_FOR_ACTIVATE;
 			READ_FIFO:
-				state = SEND_BYTE;
-			SEND_BYTE:
-				state = WAIT_BYTE;
-			WAIT_BYTE:
+				state = SEND_WORD;
+			SEND_WORD:
+				state = WAIT_WORD;
+			WAIT_WORD:
 				if(uart_done) begin
-					curr_byte_ctr = curr_byte_ctr + 1;
-					if(curr_byte_ctr == 3'b110)
-					begin
-						curr_byte_ctr = 3'b000;
-						if(activate)
-							state = WAIT_RECORD;
-						else
-							state = WAIT_FOR_ACTIVATE;
-					end
+					if(activate)
+						state = WAIT_RECORD;
 					else
-						state = SEND_BYTE;
+						state = WAIT_FOR_ACTIVATE;
 				end
+				else
+					state = SEND_WORD;
 		endcase
 	end
 
@@ -144,50 +119,52 @@ always @(state)
 begin
     case (state)
 		RESET: begin
-			clr_buf = 1;
-			reset_timetag_counter = 1;
-			activate_engine = 0;
-			uart_send = 0;
-			rec_buf_rdnext = 0;
+			clr_buf <= 1;
+			reset_timetag_counter <= 1;
+			reset_uart <= 1;
+			activate_engine <= 0;
+			uart_send <= 0;
+			rec_buf_rdnext <= 0;
 		end
 
 		WAIT_FOR_ACTIVATE: begin
-			clr_buf = 0;
-			reset_timetag_counter = 0;
-			activate_engine = 0;
-			uart_send = 0;
-			rec_buf_rdnext = 0;
+			clr_buf <= 0;
+			reset_timetag_counter <= 0;
+			reset_uart <= 0;
+			activate_engine <= 0;
+			uart_send <= 0;
+			rec_buf_rdnext <= 0;
 		end
 
 		ACTIVATE: begin
-			clr_buf = 0;
-			reset_timetag_counter = 0;
-			activate_engine = 1;
-			uart_send = 0;
-			rec_buf_rdnext = 0;
+			clr_buf <= 0;
+			reset_timetag_counter <= 0;
+			reset_uart <= 0;
+			activate_engine <= 1;
+			uart_send <= 0;
+			rec_buf_rdnext <= 0;
 		end
 
 		WAIT_RECORD: 
-			rec_buf_rdnext = 0;
+			rec_buf_rdnext <= 0;
 
-		READ_FIFO: begin
-			rec_buf_rdnext = 1;
-		end
+		READ_FIFO: 
+			rec_buf_rdnext <= 1;
 
-		SEND_BYTE: begin
-			rec_buf_rdnext = 0;
-			uart_send = 1;
+		SEND_WORD: begin
+			rec_buf_rdnext <= 0;
+			uart_send <= 1;
 		end
 		
-		WAIT_BYTE:
-			uart_send = 0;
+		WAIT_WORD:
+			uart_send <= 0;
 
 		default: begin
-			clr_buf = 0;
-			reset_timetag_counter = 0;
-			activate_engine = 0;
-			uart_send = 0;
-			rec_buf_rdnext = 0;
+			clr_buf <= 0;
+			reset_timetag_counter <= 0;
+			activate_engine <= 0;
+			uart_send <= 0;
+			rec_buf_rdnext <= 0;
 		end
     endcase
 end
