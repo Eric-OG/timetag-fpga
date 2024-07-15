@@ -1,3 +1,10 @@
+This repository is a fork from a time tagger implementation by [Ben Gamari](https://github.com/bgamari).
+
+The goal of this project was creating a simplified version of the initial implementation written at NIST by
+Polyakov, Migdall, and Nam, which can be easily adapted to a higher number detectors (originally 4).
+
+## Original README
+```
 timetag: An FPGA-based time-tagger implementation
 ==================================================
 
@@ -57,3 +64,4 @@ docs/data-format for the structure of produced event records.
 
 [1] http://www.nist.gov/pml/div685/grp03/multicoincidence.cfm
 
+```
