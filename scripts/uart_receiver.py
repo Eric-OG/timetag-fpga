@@ -11,7 +11,7 @@ writer.writerow(headers)
 
 # Configure for DEBUG
 # socat -d -d pty,raw,echo=0 pty,raw,echo=0
-serial_port = '/dev/pts/5'
+serial_port = 'COM10'
 num_bytes_record = 18
 
 def byte_arr_to_str(byte_array):
@@ -21,7 +21,7 @@ def byte_arr_to_str(byte_array):
             bin_str += str((byte>>(7-i))&1)
     return bin_str
 
-with serial.Serial('/dev/pts/5', 19200, timeout=1000) as ser:
+with serial.Serial(serial_port, 115200, timeout=1000) as ser:
     while True:
         s = ser.read(num_bytes_record)
 

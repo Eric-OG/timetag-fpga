@@ -3,7 +3,17 @@ module timetagger_100(
 	clk,
 	reset,
 	activate,
-	tx_out
+	tx_out,
+	
+	// debug outputs
+	db_strobe_c_0,
+	db_activate_engine,
+	db_reset_timetag_counter,
+	db_record_rdy,
+	db_uart_send,
+	db_rec_buf_empty,
+	db_rec_buf_full,
+	db_uart_done
 );
 
 localparam STATE_SIZE = 4;
@@ -21,6 +31,16 @@ input clk;
 input reset;
 input activate;
 output tx_out;
+
+output db_strobe_c_0;
+output db_activate_engine;
+output db_reset_timetag_counter;
+output db_record_rdy;
+output db_uart_send;
+output db_rec_buf_empty;
+output db_rec_buf_full;
+output db_uart_done;
+
 
 // Tagger engine signals
 reg activate_engine;
@@ -67,7 +87,7 @@ fifo_18_bytes rec_buf(
 	.q(rec_buf_out)
 );
 
-uart_serialized #(.CLKS_PER_BIT(173), .DATA_WIDTH_BYTES(18)) uart_transmitter (
+uart_serialized #(.CLKS_PER_BIT(434), .DATA_WIDTH_BYTES(18)) uart_transmitter (
 	.clk(clk),
     .reset(reset_uart),
     .data_in(rec_buf_out),
@@ -107,7 +127,7 @@ always @(posedge clk) begin
 						state = WAIT_FOR_ACTIVATE;
 				end
 				else
-					state = SEND_WORD;
+					state = WAIT_WORD;
 		endcase
 	end
 
@@ -145,28 +165,62 @@ begin
 			rec_buf_rdnext <= 0;
 		end
 
-		WAIT_RECORD: 
+		WAIT_RECORD: begin
+			clr_buf <= 0;
+			reset_timetag_counter <= 0;
+			reset_uart <= 0;
+			activate_engine <= 1;
+			uart_send <= 0;
 			rec_buf_rdnext <= 0;
-
-		READ_FIFO: 
-			rec_buf_rdnext <= 1;
-
-		SEND_WORD: begin
-			rec_buf_rdnext <= 0;
-			uart_send <= 1;
 		end
 		
-		WAIT_WORD:
+		READ_FIFO: begin
+			clr_buf <= 0;
+			reset_timetag_counter <= 0;
+			reset_uart <= 0;
+			activate_engine <= 1;
 			uart_send <= 0;
+			rec_buf_rdnext <= 1;
+		end
 
+		SEND_WORD: begin
+			clr_buf <= 0;
+			reset_timetag_counter <= 0;
+			reset_uart <= 0;
+			activate_engine <= 1;
+			uart_send <= 1;
+			rec_buf_rdnext <= 0;
+		end
+		
+		WAIT_WORD: begin
+			clr_buf <= 0;
+			reset_timetag_counter <= 0;
+			reset_uart <= 0;
+			activate_engine <= 1;
+			uart_send <= 0;
+			rec_buf_rdnext <= 0;
+		end
+			
 		default: begin
 			clr_buf <= 0;
 			reset_timetag_counter <= 0;
+			reset_uart <= 0;
 			activate_engine <= 0;
 			uart_send <= 0;
 			rec_buf_rdnext <= 0;
 		end
     endcase
 end
+
+// Debug signals
+assign db_strobe_c_0 = strobe_channels[0];
+assign db_activate_engine = activate_engine;
+assign db_reset_timetag_counter = reset_timetag_counter;
+assign db_record_rdy = record_rdy;
+assign db_uart_send = uart_send;
+assign db_rec_buf_empty = rec_buf_empty;
+assign db_rec_buf_full = rec_buf_full;
+assign db_uart_done = uart_done;
+
 
 endmodule

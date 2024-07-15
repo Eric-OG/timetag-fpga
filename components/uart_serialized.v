@@ -1,5 +1,5 @@
 module uart_serialized
-#(parameter DATA_WIDTH_BYTES = 6, parameter CLKS_PER_BIT = 173)
+#(parameter DATA_WIDTH_BYTES = 6, parameter CLKS_PER_BIT = 434)
 (
 	clk,
 	reset,
@@ -110,25 +110,40 @@ begin
 
 		LOAD_WORD: begin
 			counter_reset <= 0;
+			counter_up <= 0;
+			uart_send <= 0;
+			transmission_over <= 0;
 			word_shift_reg <= data_in;
 		end
 
 		SEND_BYTE: begin
+			counter_reset <= 0;
 			counter_up <= 1;
 			uart_send <= 1;
+			transmission_over <= 0;
 		end
 
 		WAIT_BYTE: begin
+			counter_reset <= 0;
 			counter_up <= 0;
 			uart_send <= 0;
+			transmission_over <= 0;
 		end
 
 		SHIFT_WORD: begin
+			counter_reset <= 0;
+			counter_up <= 0;
+			uart_send <= 0;
+			transmission_over <= 0;
 			word_shift_reg <= word_shift_reg >> 8;
 		end
 		
-		TRANSM_OVER:
+		TRANSM_OVER: begin
+			counter_reset <= 0;
+			counter_up <= 0;
+			uart_send <= 0;
 			transmission_over <= 1;
+		end
 
 		default: begin
 			counter_reset <= 0;
