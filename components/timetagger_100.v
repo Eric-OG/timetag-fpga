@@ -87,10 +87,10 @@ fifo_18_bytes rec_buf(
 	.q(rec_buf_out)
 );
 
-uart_serialized #(.CLKS_PER_BIT(2604), .DATA_WIDTH_BYTES(18)) uart_transmitter (
+uart_serialized #(.CLKS_PER_BIT(2604), .DATA_WIDTH_BYTES(19)) uart_transmitter (
 	.clk(clk),
     .reset(reset_uart),
-    .data_in(rec_buf_out),
+    .data_in({8'b000001010,rec_buf_out}), // With end character \n
     .trigger(uart_send),
     .tx_out(tx_out),
     .transmission_over(uart_done)
