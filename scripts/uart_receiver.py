@@ -21,15 +21,14 @@ def byte_arr_to_str(byte_array):
             bin_str += str((byte>>(7-i))&1)
     return bin_str
 
-with serial.Serial(serial_port, 19200, timeout=10000, inter_byte_timeout=0.1) as ser:
+with serial.Serial(serial_port, 19200, timeout=10000, inter_byte_timeout=0.001) as ser:
     while True:
         s = ser.read(num_bytes_record)
-        print(len(s))
-
         mask = 0b00001111
         # Check message size to see if it is complete
         if len(s) == num_bytes_record:
-            timetag_bytes = s[:5]+bytes([s[4]&mask])
+            print('New message:')
+            timetag_bytes = s[:4]+bytes([s[4]&mask])
             # Timetag in number of clocks since system startup
             timetag = int.from_bytes(timetag_bytes, 'little')
 
