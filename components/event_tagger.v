@@ -44,7 +44,7 @@ endgenerate
 
 always @(posedge clk)
 begin
-	if (strobe_channels_treated != 4'b0 || (timer == 36'b0 && counter_operate))
+	if (strobe_channels_treated != 0 || (timer == 36'b0 && counter_operate))
 	begin
 		data[35:0] <= timer[35:0];
 		data[36+N_CHANNELS-1:36] <= strobe_channels_treated;

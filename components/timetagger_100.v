@@ -87,7 +87,7 @@ fifo_18_bytes rec_buf(
 	.q(rec_buf_out)
 );
 
-uart_serialized #(.CLKS_PER_BIT(434), .DATA_WIDTH_BYTES(18)) uart_transmitter (
+uart_serialized #(.CLKS_PER_BIT(2604), .DATA_WIDTH_BYTES(18)) uart_transmitter (
 	.clk(clk),
     .reset(reset_uart),
     .data_in(rec_buf_out),

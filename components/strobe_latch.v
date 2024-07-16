@@ -5,22 +5,28 @@ input clk;
 input in;
 output out;
 
-reg state;
-reg out;
-initial out = 0;
+// Register peak during a clock cycle, will only be shown in the next clock
+wire peak_l_out;
+wire delayed_clk;
+wire pulse_detected;
+wire out_inv;
 
-always @(posedge clk)
-begin
-	if (in == 1 && state == 0)
-	begin
-		state <= 1;
-		out <= 1;
-	end
-	else if (out == 1)
-		out <= 0;
-	
-	if (in == 0)
-		state <= 0;
-end
+// Delay for synchonization
+delay_line #(2) clk_delay (delayed_clk, clk);
+
+sr_semisync_latch peak_detec (
+	.S(in),
+	.R(delayed_clk),
+	.Q(pulse_detected)
+);
+
+// By default the ff output is inverted
+d_flip_flop output_ff (
+	.D(pulse_detected),
+	.Q(out_inv),
+	.clk(clk)
+);
+
+assign out = ~out_inv;
 
 endmodule
