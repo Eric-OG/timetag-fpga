@@ -36,27 +36,40 @@ reg counter_reset;
 reg counter_up;
 wire counter_over;
 
+// Shift register control signals
+reg load_wrd;
+reg shift_byte;
+
 // Finite state machine states
 reg [STATE_SIZE-1:0] state = RESET;
 
 // Shift register used to assign bytes to be transmitted
-reg [DATA_WIDTH_BYTES*8-1:0] word_shift_reg;
-assign curr_uart_byte = word_shift_reg[7:0];
+wire [DATA_WIDTH_BYTES*8-1:0] wsr_data_out;
+assign curr_uart_byte = wsr_data_out[7:0];
 
-uart_tx #(.CLKS_PER_BIT(CLKS_PER_BIT)) uart_byte_transmitter
-    (.i_Clock(clk),
-     .i_Tx_DV(uart_send),
-     .i_Tx_Byte(curr_uart_byte),
-     .o_Tx_Serial(tx_out),
-     .o_Tx_Done(uart_done)
-    );
+shift_register #(DATA_WIDTH_BYTES*8) byte_shifter (
+	.clk(clk),
+	.reset(reset),
+	.load(load_wrd),
+	.shift_enable(shift_byte),
+	.data_in(data_in),
+	.data_out(wsr_data_out)
+);
 
-counter #(DATA_WIDTH_BYTES) bytes_counter
-    (.clk(clk),
-     .reset(counter_reset),
-     .up(counter_up),
-     .count_over(counter_over)
-    );
+uart_tx #(.CLKS_PER_BIT(CLKS_PER_BIT)) uart_byte_transmitter (
+	.i_Clock(clk),
+    .i_Tx_DV(uart_send),
+    .i_Tx_Byte(curr_uart_byte),
+    .o_Tx_Serial(tx_out),
+    .o_Tx_Done(uart_done)
+);
+
+counter #(DATA_WIDTH_BYTES) bytes_counter (
+	.clk(clk),
+    .reset(counter_reset),
+    .up(counter_up),
+    .count_over(counter_over)
+);
 
 // State transition logic
 always @(posedge clk) begin
@@ -86,8 +99,6 @@ always @(posedge clk) begin
 			state = WAIT_FOR_TRIGGER;
 	endcase
 	end
-
-
 end
 
 // Dataflow logic
@@ -99,6 +110,8 @@ begin
 			counter_up <= 0;
 			uart_send <= 0;
 			transmission_over <= 0;
+			load_wrd <= 0;
+			shift_byte <= 0;
 		end
 
 		WAIT_FOR_TRIGGER: begin
@@ -106,6 +119,8 @@ begin
 			counter_up <= 0;
 			uart_send <= 0;
 			transmission_over <= 0;
+			load_wrd <= 0;
+			shift_byte <= 0;
 		end
 
 		LOAD_WORD: begin
@@ -113,7 +128,8 @@ begin
 			counter_up <= 0;
 			uart_send <= 0;
 			transmission_over <= 0;
-			word_shift_reg <= data_in;
+			load_wrd <= 1;
+			shift_byte <= 0;
 		end
 
 		SEND_BYTE: begin
@@ -121,6 +137,8 @@ begin
 			counter_up <= 1;
 			uart_send <= 1;
 			transmission_over <= 0;
+			load_wrd <= 0;
+			shift_byte <= 0;
 		end
 
 		WAIT_BYTE: begin
@@ -128,6 +146,8 @@ begin
 			counter_up <= 0;
 			uart_send <= 0;
 			transmission_over <= 0;
+			load_wrd <= 0;
+			shift_byte <= 0;
 		end
 
 		SHIFT_WORD: begin
@@ -135,7 +155,8 @@ begin
 			counter_up <= 0;
 			uart_send <= 0;
 			transmission_over <= 0;
-			word_shift_reg <= word_shift_reg >> 8;
+			load_wrd <= 0;
+			shift_byte <= 1;
 		end
 		
 		TRANSM_OVER: begin
@@ -143,6 +164,8 @@ begin
 			counter_up <= 0;
 			uart_send <= 0;
 			transmission_over <= 1;
+			load_wrd <= 0;
+			shift_byte <= 0;
 		end
 
 		default: begin
@@ -150,6 +173,8 @@ begin
 			counter_up <= 0;
 			uart_send <= 0;
 			transmission_over <= 0;
+			load_wrd <= 0;
+			shift_byte <= 0;
 		end
     endcase
 end
